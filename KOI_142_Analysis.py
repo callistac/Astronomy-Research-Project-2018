@@ -1,9 +1,11 @@
 # If you make use of this code, please cite Christ, C. N., Montet, B. T., & Fabrycky, D. C. 2018, arXiv:1810.02826
 
 # The following code is used to determine how much TESS will improve our measurements of KOI-142 (Kepler-88)
+# First we must find posterior distribution of parameters with Kepler data only
+# Then we must find posterior distribution of parameters with Kepler and a theoretical TESS data point
 
 import numpy as np
-import matplotlib.pyplot as pyplot
+import matplotlib.pyplot as plt
 import scipy.optimize as op
 import os
 import emcee
@@ -50,18 +52,20 @@ obs_times_dur = 3.28
 error_dur = 0.185
 
 '''
-Goal is to find the posterior distribution (and best fit values) of the parameters for KOI-142
+Goal is to find the posterior distribution (and best fit values) of the parameters for KOI-142 with all Kepler data
 *Note* Same process was done in Nesvorny et al. (2013), but they did not post their posteriors and so we redid their analysis with all Kepler data
 
 Creating likelihood function that will be used for MCMC analysis (chi squared between observed and predicted values by TTVFast)
-  input: theta (parameter values we are looking to alter) additional unchanging parameters (G_VAL and Mstar)
+  input: theta (parameter values we are looking to alter) 
+         G_VAL and Mstar (additional unchanging parameters)
+         TESS (False- do not include a hypothetical TESS data point, True-include TESS info)
   output: function will return a chi squared value for a given set of initial parameters (measures how well the observed distribution of data fits with the distribution that is expected if the variables are independent)-goodness of fit
 '''
-def likelihood(theta, G_VAL, Mstar):
+def likelihood(theta, G_VAL, Mstar, TESS):
     Mpb, Periodb, Eb, Ib, Wb, Meanb, Mpc, Periodc, Ec, Ic, Wc, Longnodec, Meanc = theta
     Longnodeb = 0.0
     #creating/writing .in file
-    filename = ("/Users/Callista/Documents/GitHub/infiles/TTVs0" + ".in")
+    filename = ("/Users/Callista/Documents/GitHub/infiles/TTVs0.in")
     infile = open(filename, 'w')
     infile.write("%.11f\n%.11f\n%.11f\n" % (G_VAL, Mstar, Mpb))
     infile.write("%.11f %.11f %.11f %.11f %.11f %.11f\n" % (Periodb, Eb, Ib, Longnodeb, Wb, Meanb))
@@ -94,12 +98,14 @@ def likelihood(theta, G_VAL, Mstar):
         epoch_1 = np.delete(epoch_1, miss_epoch)
         time_1 = np.delete(slice_time, miss_epoch)
         chi_squared[i, :] = ((time_1[:120] - obs_times[1:])/ (error[1:]))**2
-        chi2_tess = ((time_1[-12] - 3823.0106513) / 0.01174660432206573)**2 
+        if TESS == True:
+          chi2_tess = ((time_1[-12] - 3823.0106513) / 0.01174660432206573)**2 
     else:
         epoch_1 = np.delete(epoch_1, miss_epoch)
         time_1 = np.delete(time_1, miss_epoch)
         chi_squared[i, :] = ((time_1[:120] - obs_times[1:]) / (error[1:]))**2
-        chi2_tess = ((time_1[-12] - 3823.0106513) / 0.01174660432206573)**2 
+        if TESS == True:
+          chi2_tess = ((time_1[-12] - 3823.0106513) / 0.01174660432206573)**2 
 
     #conversions
     Ib_rad = Ib * 0.0174533 
@@ -110,7 +116,6 @@ def likelihood(theta, G_VAL, Mstar):
     b_val = ((semi_axis**2) * (np.cos(Ib_rad))**2 * (1 / R_star_AU**2) * ((1 - Eb**2)/(1 + Eb * np.sin(Wb_rad)))**2)
     
     if b_val > 1:
-        print(np.inf)
         return np.inf
     
     Tdur = ((2 * (1 + delta) * R_star_AU / Vsky_1) * np.sqrt(1 - b_val))
@@ -123,10 +128,11 @@ def likelihood(theta, G_VAL, Mstar):
     #summing chi_vals
     sum_matrix = np.sum(chi_squared, axis=1)
     ind = np.unravel_index(np.argmin(sum_matrix, axis=None), sum_matrix.shape)
-    print(np.sum(0.5*(sum_matrix[ind] + chi2_val + chi2_tess))) 
-    return 0.5*(sum_matrix[ind] + chi2_val + chi2_tess) 
+    return 0.5*(sum_matrix[ind] + chi2_val + chi2_tess) #################################
+  
+  
 
-#make sure chi squared values significantly are reduce by end of optimization
+#make sure chi squared values are significantly reduced by end of optimization
 bnds = ((0, 0.006), (10.90, 10.93), (0, 1), (60, 90), (0, 360), (0, 360), (0, 0.006), (22.20, 22.35), (0, 1), (60, 120), (180, 540), (-180, 180), (0, 360))
 result = op.minimize(likelihood, [M1_guess, P1_guess, E1_guess, i1_guess,
                           W1_guess, mean1_guess, M2_guess, P2_guess, E2_guess, i2_guess, LongNode2_guess,
@@ -135,7 +141,7 @@ result = op.minimize(likelihood, [M1_guess, P1_guess, E1_guess, i1_guess,
 M1, P1, E1, I1, W1, Mean1, M2, P2, E2, I2, Longnode2, W2, Mean2 = result["x"] 
 
 '''
-defining a prior for the total probability function
+Defining a prior for the total probability function
 '''
 def prior(theta):
     Mpb, Periodb, Eb, Ib, Wb, Meanb, Mpc, Periodc, Ec, Ic, Wc, Longnodec, Meanc = theta
@@ -157,5 +163,34 @@ def tot_prob(theta, G_VAL, Mstar):
         return -np.inf
     else:
         return lp + -1*likelihood(theta, G_VAL, Mstar)
- 
+
+#initalizing walkers into a tiny Gaussian ball around the maximum likelihood parameters
+ndim, nwalkers = 13, 150 
+pos = [result["x"] + 0.5*np.array((1e-5, 1e-4, 1e-4, 1, 1, 1, 1e-5, 1e-3, 2.5e-3, 3, 2, 1, 1e-1))*np.random.randn(ndim) for i in range(nwalkers)]
+
+sampler = emcee.EnsembleSampler(nwalkers, ndim, tot_prob, args=(g_value, M_star))
+sampler.run_mcmc(pos, 10000)
+np.save("sampler_chains1", sampler.chain)
+
+#checking if chains are burnt in (using eccentricity as an example)
+plt.plot(sampler.chain[:, :, 2].T, 'k')
+
+#chains for some parameters do not appear to be fully burnt in, so rerun MCMC from where run_mcmc left off the last time it executed
+sampler.run_mcmc(None, 10000)
+
+samples = sampler.chain[:, 5000:, :].reshape((-1, ndim))
+new_widths = np.zeros(shape=(13))
+np.save("sampler_chains2", sampler.chain)
+xx = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),
+                             zip(*np.percentile(samples, [15.8, 50, 84.2],
+                                                axis=0)))
+params_lst = ['mass1', 'period1', 'e1', 'I1', 'w1', 'Mean1', 'mass2', 'period2', 'e2', 'I2', 'Longnode2', 'w2', 'Mean2']
+for nn in range(13):
+    print(params_lst[nn], xx[nn])
+    new_widths[nn] = xx[nn][1] + xx[nn][2]
+print(new_widths)
+
+
+
+
 
