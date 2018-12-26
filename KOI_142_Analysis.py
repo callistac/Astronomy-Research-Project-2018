@@ -102,6 +102,7 @@ def likelihood(theta, G_VAL, Mstar, TESS):
         chi_squared[i, :] = ((time_1[:120] - obs_times[1:])/ (error[1:]))**2
         chi2_tess = 0
         if TESS == True:
+          #the numbers in the following line were obtained from the TESS_transit_uncert.py file
           chi2_tess = ((time_1[-12] - 3823.0106513) / 0.01174660432206573)**2 
     else:
         epoch_1 = np.delete(epoch_1, miss_epoch)
