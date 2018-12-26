@@ -3,7 +3,8 @@
 # The following code is used to determine how much TESS will improve our measurements of KOI-142 (Kepler-88)
 # First we must find posterior distribution of parameters with Kepler data only
 # Then we must find posterior distribution of parameters with Kepler and a theoretical TESS data point
-# We can compare th
+# We can compare the two posteriors to see how much TESS will improve our measurements of KOI-142
+# We use TTVFast for this analysis: Deck, Agol, Holman & Nesvorny, 2014,  ApJ, 787, 132, arXiv:1403.1895
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -219,9 +220,3 @@ new_widths_tess = best_fit_errors(samples_tess, new_widths_tess)
 #compute the percentage of improvement between using just Kepler data and Kepler AND TESS data for KOI-142
 improvement = (new_widths_tess / old_widths)*100
 improvement = 100 - improvement
-
-
-
-
-
-
