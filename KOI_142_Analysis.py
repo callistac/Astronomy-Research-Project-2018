@@ -3,6 +3,7 @@
 # The following code is used to determine how much TESS will improve our measurements of KOI-142 (Kepler-88)
 # First we must find posterior distribution of parameters with Kepler data only
 # Then we must find posterior distribution of parameters with Kepler and a theoretical TESS data point
+# We can compare th
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -130,7 +131,7 @@ def likelihood(theta, G_VAL, Mstar, TESS):
     #summing chi_vals
     sum_matrix = np.sum(chi_squared, axis=1)
     ind = np.unravel_index(np.argmin(sum_matrix, axis=None), sum_matrix.shape)
-    return 0.5*(sum_matrix[ind] + chi2_val + chi2_tess) #################################
+    return 0.5*(sum_matrix[ind] + chi2_val + chi2_tess)
   
   
 
@@ -170,7 +171,7 @@ def tot_prob(theta, G_VAL, Mstar, TESS):
 ndim, nwalkers = 13, 150 
 pos = [result["x"] + 0.5*np.array((1e-5, 1e-4, 1e-4, 1, 1, 1, 1e-5, 1e-3, 2.5e-3, 3, 2, 1, 1e-1))*np.random.randn(ndim) for i in range(nwalkers)]
 
-sampler = emcee.EnsembleSampler(nwalkers, ndim, tot_prob, args=(g_value, M_star))
+sampler = emcee.EnsembleSampler(nwalkers, ndim, tot_prob, args=(g_value, M_star, False))
 sampler.run_mcmc(pos, 10000)
 np.save("sampler_chains1", sampler.chain)
 
@@ -181,20 +182,43 @@ plt.plot(sampler.chain[:, :, 2].T, 'k')
 sampler.run_mcmc(None, 10000)
 
 samples = sampler.chain[:, 5000:, :].reshape((-1, ndim))
-new_widths = np.zeros(shape=(13))
 np.save("sampler_chains2", sampler.chain)
+  
+#find posterior distribution for KOI-142 parameters with Kepler AND a hypothetical TESS data point (arg=True)
+sampler = emcee.EnsembleSampler(nwalkers, ndim, tot_prob, args=(g_value, M_star, True))
+sampler.run_mcmc(pos, 10000)
+np.save("sampler_chains_tess", sampler.chain)
+sampler.run_mcmc(None, 10000)
+samples_tess = sampler.chain[:, 5000:, :].reshape((-1, ndim))
+np.save("sampler_chains2_tess", sampler.chain)
 
-#finding best fit values and 1 standard deviation errors with JUST Kepler data
-xx = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),
-                             zip(*np.percentile(samples, [15.8, 50, 84.2],
+'''
+Finding the best fit parameters and their 1sigma uncertainties 
+Input:
+  data, whether we are using only Kepler data or Kepler AND TESS data
+Output:
+  
+'''
+def best_fit_errors(data, width_uncert):
+  xx = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),
+                             zip(*np.percentile(data, [15.8, 50, 84.2],
                                                 axis=0)))
-params_lst = ['mass1', 'period1', 'e1', 'I1', 'w1', 'Mean1', 'mass2', 'period2', 'e2', 'I2', 'Longnode2', 'w2', 'Mean2']
-for nn in range(13):
-    print(params_lst[nn], xx[nn])
-    #finding the width of the 68% confidence interval (adding uncertainties)
-    new_widths[nn] = xx[nn][1] + xx[nn][2]
-print(new_widths)
+  params_lst = ['mass1', 'period1', 'e1', 'I1', 'w1', 'Mean1', 'mass2', 'period2', 'e2', 'I2', 'Longnode2', 'w2', 'Mean2']
+  for nn in range(13):
+      print(params_lst[nn], xx[nn])
+      #finding the width of the 68% confidence interval (adding uncertainties) for KOI-142 transits
+      width_uncert[nn] = xx[nn][1] + xx[nn][2]
+  return width_uncert
 
+new_widths = np.zeros(shape=(13))
+new_widths_tess = np.zeros(shape=(13))
+old_widths = best_fit_errors(samples, new_widths)
+new_widths_tess = best_fit_errors(samples_tess, new_widths_tess)
+
+#the uncertainties decrease when we use Kepler and TESS data than just Kepler data alone
+#compute the percentage of improvement between using just Kepler data and Kepler AND TESS data for KOI-142
+improvement = (new_widths_tess / old_widths)*100
+improvement = 100 - improvement
 
 
 
