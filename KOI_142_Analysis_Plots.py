@@ -106,7 +106,7 @@ plt.yticks(fontsize=19)
 plt.savefig('final_transit_uncert_new.pdf', bbox_inches='tight')
 
 
-
+#final 
 #plot of KOI-142's TTVs (observed - calculated transit times), where calculated are transit times based on a constant period model
 
 #initalizing time array (until 2020)
@@ -116,5 +116,33 @@ for jj in range(len(time_array)):
         time_array[jj] = 2009.25
     else:
         time_array[jj] = time_array[jj-1] + 10.915996767 / 365
-        
- 
+
+#calculating transit times until 2020        
+array_of_times = np.zeros(shape=(1500000, 356))
+index_time = 0
+for i in range(len(c)):
+    for j in range(len(c[0])):
+        ttr = calc_transit_times(c, (i, j), 3950)
+        array_of_times[index_time] = time_1
+        index_time += 1
+np.save('time_array', array_of_times)
+
+#choosing 40 chains to plot, convert transit times to minutes
+for kk in range(len(random_tot)): 
+    times = array_of_times[kk]
+    OC = np.zeros((len(planet_1)))
+    for mm in range(len(planet_1)):
+        OC[mm] = times[mm] - 10.915996767*epoch_1[mm] - 0.03595719*epoch_1[mm]
+    plt.plot(time_array, (OC-np.mean(OC))*1440, 'b.', markersize=0.3, linestyle='solid', linewidth=0.1, alpha=0.8)
+    
+plt.axvline(x=2019.536985, linewidth=3, color='g', alpha=0.25)
+plt.axvline(x=2019.5, linewidth=0.5, color='k', alpha=0.6)
+plt.axvline(x=2019.57397, linewidth=0.5, color='k', alpha=0.6) 
+plt.xlabel('Time (years)', fontsize=16)
+plt.ylabel('O-C (minutes)', fontsize=16)
+#plt.xticks([2019.25, 2019.25+(1/12.0), 2019.25+(2/12.0), 2019.5, 2019.5+(1/12.0), 2019.5+(2/12.0)], ['1 Apr', '1 May', '1 Jun', '1 Jul', '1 Aug', '1 Sep'], fontsize=14)
+plt.yticks(fontsize=14)
+plt.gcf().subplots_adjust(left=0.19, bottom=0.17, right=0.94, top=0.94, wspace=0.0, hspace=0.0)
+
+plt.savefig("kepler_transitsOC_min_band.pdf")
+plt.show()
