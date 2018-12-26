@@ -42,7 +42,7 @@ Output:
 '''
 def calc_transit_times(full_chain, specific_chains, ending_date):
     params = full_chain[specific_chains[0], specific_chains[1], :]
-    filename = ("/Users/Callista/Documents/GitHub/infiles2/TTVs0" + ".in")
+    filename = ("/Users/Callista/Documents/GitHub/infiles2/TTVs0.in")
     infile = open(filename, 'w')
     infile.write("%.11f\n%.11f\n%.11f\n" % (g_value, M_star, params[0]))
     infile.write("%.11f %.11f %.11f %.11f %.11f %.11f\n" % (params[1], params[2], params[3], 0.0, params[4], params[5]))
@@ -89,6 +89,7 @@ std_array2 = np.std(tess_chain_transits28, axis=0)*1440
 plt.figure(figsize=(18,7))
 plt.gcf().subplots_adjust(left=0.17, bottom=0.17, right=0.94, top=0.94, wspace=0.0, hspace=0.0)
 
+#vertical line represents July 2019, when TESS will most likely observe KOI-142
 plt.axvline(x=2019.54166667, linewidth=2.5, color='r', alpha=0.8)
 plt.axvline(x=2019.5, linewidth=0.5, color='k', alpha=0.8)
 plt.axvline(x=2019.583333333, linewidth=0.5, color='k', alpha=0.8)
@@ -103,3 +104,17 @@ plt.ylabel('Uncertainty in transit time (minutes)', fontsize=20)
 plt.xticks(fontsize=19)
 plt.yticks(fontsize=19)
 plt.savefig('final_transit_uncert_new.pdf', bbox_inches='tight')
+
+
+
+#plot of KOI-142's TTVs (observed - calculated transit times), where calculated are transit times based on a constant period model
+
+#initalizing time array (until 2020)
+time_array = np.zeros(shape=(356,))
+for jj in range(len(time_array)):
+    if (jj==0):
+        time_array[jj] = 2009.25
+    else:
+        time_array[jj] = time_array[jj-1] + 10.915996767 / 365
+        
+ 
