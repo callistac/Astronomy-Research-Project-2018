@@ -98,12 +98,14 @@ def likelihood(theta, G_VAL, Mstar, TESS):
         epoch_1 = np.delete(epoch_1, miss_epoch)
         time_1 = np.delete(slice_time, miss_epoch)
         chi_squared[i, :] = ((time_1[:120] - obs_times[1:])/ (error[1:]))**2
+        chi2_tess = 0
         if TESS == True:
           chi2_tess = ((time_1[-12] - 3823.0106513) / 0.01174660432206573)**2 
     else:
         epoch_1 = np.delete(epoch_1, miss_epoch)
         time_1 = np.delete(time_1, miss_epoch)
         chi_squared[i, :] = ((time_1[:120] - obs_times[1:]) / (error[1:]))**2
+        chi2_tess = 0
         if TESS == True:
           chi2_tess = ((time_1[-12] - 3823.0106513) / 0.01174660432206573)**2 
 
@@ -136,7 +138,7 @@ def likelihood(theta, G_VAL, Mstar, TESS):
 bnds = ((0, 0.006), (10.90, 10.93), (0, 1), (60, 90), (0, 360), (0, 360), (0, 0.006), (22.20, 22.35), (0, 1), (60, 120), (180, 540), (-180, 180), (0, 360))
 result = op.minimize(likelihood, [M1_guess, P1_guess, E1_guess, i1_guess,
                           W1_guess, mean1_guess, M2_guess, P2_guess, E2_guess, i2_guess, LongNode2_guess,
-                          W2_guess, mean2_guess], args=(g_value, M_star), method="L-BFGS-B", bounds= bnds)
+                          W2_guess, mean2_guess], args=(g_value, M_star, False), method="L-BFGS-B", bounds= bnds)
 
 M1, P1, E1, I1, W1, Mean1, M2, P2, E2, I2, Longnode2, W2, Mean2 = result["x"] 
 
@@ -157,12 +159,12 @@ def prior(theta):
 '''
 Defining a total probability function 
 '''
-def tot_prob(theta, G_VAL, Mstar):
+def tot_prob(theta, G_VAL, Mstar, TESS):
     lp = prior(theta)
     if not np.isfinite(lp):
         return -np.inf
     else:
-        return lp + -1*likelihood(theta, G_VAL, Mstar)
+        return lp + -1*likelihood(theta, G_VAL, Mstar, False)
 
 #initalizing walkers into a tiny Gaussian ball around the maximum likelihood parameters
 ndim, nwalkers = 13, 150 
@@ -181,14 +183,19 @@ sampler.run_mcmc(None, 10000)
 samples = sampler.chain[:, 5000:, :].reshape((-1, ndim))
 new_widths = np.zeros(shape=(13))
 np.save("sampler_chains2", sampler.chain)
+
+#finding best fit values and 1 standard deviation errors with JUST Kepler data
 xx = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),
                              zip(*np.percentile(samples, [15.8, 50, 84.2],
                                                 axis=0)))
 params_lst = ['mass1', 'period1', 'e1', 'I1', 'w1', 'Mean1', 'mass2', 'period2', 'e2', 'I2', 'Longnode2', 'w2', 'Mean2']
 for nn in range(13):
     print(params_lst[nn], xx[nn])
+    #finding the width of the 68% confidence interval (adding uncertainties)
     new_widths[nn] = xx[nn][1] + xx[nn][2]
 print(new_widths)
+
+
 
 
 
