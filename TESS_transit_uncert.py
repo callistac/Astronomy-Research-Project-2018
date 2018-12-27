@@ -123,7 +123,7 @@ likelihood_array /= np.sum(likelihood_array)
 '''
 finding the cumulative sum of the likelihood array
 subtracting off the first 16th and 84th percentile
-finding the transit time values where the y value (likelihoods) crosses 0
+finding the transit time values where the y value (likelihoods) crosses zero
 the standard deviation is half of t_84 - t_16
 '''
 neg_val1 = 0.0
@@ -139,8 +139,7 @@ first_func = interp1d(transit_time, first_dev)
 plt.plot(first_func.x, first_func.y, '-')
 plt.show()
 
-second_func = interp1d(transit_time, second_dev)
-
+#finding where the likelihood values cross zero at 16th percentile
 for index1 in range(len(first_dev)):
     if first_dev[index1] < 0:
         neg_val1 = first_dev[index1]
@@ -152,10 +151,12 @@ y2 = first_dev[index1]
 x1 = transit_time[index1-1]
 x2 = transit_time[index1]
 
+#solving for the transit time where likelihoods cross zero at 16th percentile
 slope1 = (y1 - y2) / (x1 - x2)
 t_16 = -1*((y1 - 0) / slope1) + x1 
 print("t_16", t_16)
 
+#finding where the likelihood values cross zero at 84th percentile
 for index2 in range(len(second_dev)):
     if second_dev[index2] < 0:
         neg_val2 = second_dev[index2]
@@ -167,9 +168,11 @@ y84_2 = second_dev[index2]
 x84_1 = transit_time[index2-1]
 x84_2 = transit_time[index2]
 
+#solving for the transit time where likelihoods cross zero at 84th percentile
 slope2 = (y84_1 - y84_2) / (x84_1 - x84_2)
 t_84 = -1*((y84_1 - 0) / slope2) + x84_1
 print("t_84", t_84)
 
+#finding the approximate TESS uncertainty for 2019, used in likelihood func. in KOI_142_Analysis.py
 std_dev_final = 0.5*(t_84 - t_16)
 print(std_dev_final)
