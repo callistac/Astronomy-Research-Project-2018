@@ -1,0 +1,5 @@
+
+KOI_142_Analysis.py - main source of code
+Auxiliary files- TESS_transit_uncert.py, KOI_142_Analysis_Plots.py
+    -- TESS_transit_uncert.py, predicts the transit uncertainty that TESS will have in 2019
+    -- KOI_142_Analysis_Plots.py, visualization of results
