@@ -221,3 +221,6 @@ new_widths_tess = best_fit_errors(samples_tess, new_widths_tess)
 #compute the percentage of improvement between using just Kepler data and Kepler AND TESS data for KOI-142
 improvement = (new_widths_tess / old_widths)*100
 improvement = 100 - improvement
+
+
+
