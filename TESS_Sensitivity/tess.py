@@ -104,9 +104,8 @@ for index, row in df.iterrows():
     koidepth = koidepth * t_contam_ratio  
     df.at[index, 'new_transit_depth'] = koidepth
     
- #coming up with the equation that will convert a tess magnitude to total noise that tess will observe
+#coming up with the equation that will convert a tess magnitude to total noise that tess will observe
 #used sullivan et al's plot to come up with the equation for total noise
-
 for index, row in df.iterrows():
     mag = row['tess_magnitude']
     
@@ -122,4 +121,100 @@ for index, row in df.iterrows():
     
     tot_noise = np.sqrt(star_noise_r**2 + sky_noise_gn**2 + read_noise_gy**2 + syst_noise_b**2)
     tot_noise *= np.sqrt(2)
-    df.at[index, 'tot_noise'] = tot_noise 
+    df.at[index, 'tot_noise'] = tot_noise
+    
+'''
+Function that calculates signal-to-noise ratio and inputs those SNR to our dataframe 
+Input: 
+    num_camp - the number of campaigns that TESS will observe the Kepler field (1=27.4 days, 2=54.8 days)
+Output: 
+    none, adds SNR to df
+'''
+def Calc_SNR(num_camp):
+    for index, row in df.iterrows():
+        signal = row['new_transit_depth']
+        noise = row['tot_noise']
+        tdur_hr = row['koi_duration']
+        texp = 30 #minutes
+        period = row['koi_period']
+        tdur = tdur_hr * 60 
+        
+        #calculating the number of transits observed in a given period and number of campaigns
+        num_transits = 27.4*num_camp / period
+        N = int(num_transits)
+        
+        #the probability of detecting N+1 transits
+        prob_nplus1 = num_transits%1
+        
+        df.at[index, 'prob_nplus1_'+ str(num_camp)] = prob_nplus1
+        
+        #SNR1 is the sig-noise ratio for detecting N transits
+        SNR1 = (signal / noise) * np.sqrt(tdur / texp) * np.sqrt(N)
+        df.at[index, 'SNR1_'+ str(num_camp)] = SNR1
+        
+        #SNR2 is the sig-noise tratio for detecting N+1 transits
+        SNR2 = (signal / noise) * np.sqrt(tdur / texp) * np.sqrt(N+1)
+        df.at[index, 'SNR2_'+ str(num_camp)] = SNR2
+        
+#calculates SNR for 1 or 2 campaigns (or specified value of campaigns (sectors), see Table 1 in Christ et al.
+for i in range(1, 3):
+    Calc_SNR(i)
+
+#function for converting noise to a probability of detection taken from Christiansen et al. 
+def Phi(x,mu=0,sigma=1):
+    t = erf((x-mu)/(sigma*sqrt(2)))
+    return 0.5 + 0.5*t
+
+#taking SNR for N and N+1 for both campaigns and converting them to probabilities of detection
+#tess has a 7.1 signal detection threshold, but best case scenario would be a 3 sigma signal detection threshold
+for index, row in df.iterrows():
+    snratio1_camp1 = row['SNR1_1']
+    snratio2_camp1 = row['SNR2_1']
+    snratio1_camp2 = row['SNR1_2']
+    snratio2_camp2 = row['SNR2_2']
+    prob_num_transits1 = row['prob_nplus1_1']
+    prob_num_transits2 = row['prob_nplus1_2']
+    
+    #this line was used to find total SNR for harvard people
+    df.at[index, 'total_SNR1'] = (snratio1_camp1*(1 - prob_num_transits1)) + (snratio2_camp1*(prob_num_transits1))
+    df.at[index, 'total_SNR2'] = (snratio1_camp2*(1 - prob_num_transits2)) + (snratio2_camp2*(prob_num_transits2))
+    
+    period = row['koi_period']
+    prob1_camp1 = Phi(snratio1_camp1, mu=3.0, sigma=1.0) #mu = signal detection threshold, using either 3 or 7.1
+    prob2_camp1 = Phi(snratio2_camp1, mu=3.0, sigma=1.0)
+    
+    prob1_camp2 = Phi(snratio1_camp2, mu=3.0, sigma=1.0)
+    prob2_camp2 = Phi(snratio2_camp2, mu=3.0, sigma=1.0)
+    
+    #tot_prob = probability of N transit* probability of detecting one transit + probability of N+1 transits* prob of detecting N+1 transits
+    tot_prob_camp1 = prob1_camp1*(1 - prob_num_transits1) + prob2_camp1*(prob_num_transits1)
+    tot_prob_camp2 = prob1_camp2*(1 - prob_num_transits2) + prob2_camp2*(prob_num_transits2)
+    
+    df.at[index, 'tot_prob_camp1'] = tot_prob_camp1
+    df.at[index, 'tot_prob_camp2'] = tot_prob_camp2
+ 
+#finding out how many of these prob vals are nan
+nan_df = df['tot_prob_camp1'][~np.isfinite(df['tot_prob_camp1'])]
+print(len(nan_df))
+
+#finding any planets that have either a missing tess magnitude or depth
+missing_tess_mag = []
+missing_depth = []
+for index, row in df.iterrows():
+    if index in list(nan_df.index.values):
+        if (np.isnan(df.loc[index]['koi_depth'])):
+            missing_depth.append(df.loc[index]['kepid'])
+        if (np.isnan(df.loc[index]['tess_magnitude'])):
+            missing_tess_mag.append(df.loc[index]['kepid'])
+
+print("missing tess mag", missing_tess_mag)
+print("missing depth", missing_depth)
+for kk in range(len(missing_tess_mag)):
+    if missing_tess_mag[kk] in missing_depth:
+        print(missing_tess_mag[kk])
+        
+#if a planet is missing a depth, then get rid of it
+for index, row in df.iterrows():
+    if row['kepid'] in missing_depth:
+        df = df.drop(labels=index)
+        
