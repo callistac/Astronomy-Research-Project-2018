@@ -1,7 +1,7 @@
 # If you make use of this code, please cite Christ, C. N., Montet, B. T., & Fabrycky, D. C. 2018, arXiv:1810.02826
 
-KOI_142_Analysis.py - main source of code
-Auxiliary files - TESS_transit_uncert.py, KOI_142_Analysis_Plots.py
-    -- TESS_transit_uncert.py; predicts the transit uncertainty that TESS will have in 2019, used in MCMC analysis in KOI_142_Analysis.py
-    -- KOI_142_Analysis_Plots.py; visualization of results
+KOI_142_Analysis.ipynb - main source of code
+Auxiliary files - TESS_transit_uncert.ipynb, KOI_142_Analysis_Plots.ipynb
+    -- TESS_transit_uncert.ipynb; predicts the transit uncertainty that TESS will have in 2019, used in MCMC analysis in KOI_142_Analysis.ipynb
+    -- KOI_142_Analysis_Plots.ipynb; visualization of results
 
